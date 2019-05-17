@@ -32,8 +32,9 @@
 
 #define ARRAY_SIZE(arr) (int)(sizeof(arr) / sizeof((arr)[0]))
 
-void print_chip_raw(const sensors_chip_name *name)
+int print_chip_raw(const sensors_chip_name *name)
 {
+	int ret = 0;
 	int a, b, err;
 	const sensors_feature *feature;
 	const sensors_subfeature *sub;
@@ -45,6 +46,7 @@ void print_chip_raw(const sensors_chip_name *name)
 		if (!(label = sensors_get_label(name, feature))) {
 			fprintf(stderr, "ERROR: Can't get label of feature "
 				"%s!\n", feature->name);
+			ret = 1;
 			continue;
 		}
 		printf("%s:\n", label);
@@ -53,22 +55,26 @@ void print_chip_raw(const sensors_chip_name *name)
 		while ((sub = sensors_get_all_subfeatures(name, feature, &b))) {
 			if (sub->flags & SENSORS_MODE_R) {
 				if ((err = sensors_get_value(name, sub->number,
-							     &val)))
+							     &val))) {
 					fprintf(stderr, "ERROR: Can't get "
 						"value of subfeature %s: %s\n",
 						sub->name,
 						sensors_strerror(err));
-				else
+					ret = 1;
+				} else {
 					printf("  %s: %.3f\n", sub->name, val);
+				}
 			} else
 				printf("(%s)\n", label);
 		}
 		free(label);
 	}
+	return ret;
 }
 
-void print_chip_json(const sensors_chip_name *name)
+int print_chip_json(const sensors_chip_name *name)
 {
+	int ret = 0;
 	int a, b, cnt, subCnt, err;
 	const sensors_feature *feature;
 	const sensors_subfeature *sub;
@@ -81,6 +87,7 @@ void print_chip_json(const sensors_chip_name *name)
 		if (!(label = sensors_get_label(name, feature))) {
 			fprintf(stderr, "ERROR: Can't get label of feature "
 				"%s!\n", feature->name);
+			ret = 1;
 			continue;
 		}
 		if (cnt > 0)
@@ -97,6 +104,7 @@ void print_chip_json(const sensors_chip_name *name)
 						"value of subfeature %s: %s\n",
 						sub->name,
 						sensors_strerror(err));
+					ret = 1;
 				} else {
 					if (subCnt > 0)
 						printf(",\n");
@@ -115,6 +123,7 @@ void print_chip_json(const sensors_chip_name *name)
 	}
 	if (cnt > 0)
 		printf("\n");
+	return ret;
 }
 
 static const char hyst_str[] = "hyst";
@@ -338,7 +347,7 @@ static const struct sensor_subfeature_list temp_sensors[] = {
 				 + ARRAY_SIZE(temp_emergency_sensors) \
 				 - NUM_TEMP_ALARMS - 4)
 
-static void print_chip_temp(const sensors_chip_name *name,
+static int print_chip_temp(const sensors_chip_name *name,
 			    const sensors_feature *feature,
 			    int label_size)
 {
@@ -353,7 +362,7 @@ static void print_chip_temp(const sensors_chip_name *name,
 	if (!(label = sensors_get_label(name, feature))) {
 		fprintf(stderr, "ERROR: Can't get label of feature %s!\n",
 			feature->name);
-		return;
+		return 1;
 	}
 	print_label(label, label_size);
 	free(label);
@@ -406,6 +415,7 @@ static void print_chip_temp(const sensors_chip_name *name,
 		       sens == 6 ? "Intel PECI" : "unknown");
 	}
 	printf("\n");
+	return 0;
 }
 
 static const struct sensor_subfeature_list voltage_sensors[] = {
@@ -427,7 +437,7 @@ static const struct sensor_subfeature_list voltage_sensors[] = {
 #define NUM_IN_ALARMS	5
 #define NUM_IN_SENSORS	(ARRAY_SIZE(voltage_sensors) - NUM_IN_ALARMS - 1)
 
-static void print_chip_in(const sensors_chip_name *name,
+static int print_chip_in(const sensors_chip_name *name,
 			  const sensors_feature *feature,
 			  int label_size)
 {
@@ -441,7 +451,7 @@ static void print_chip_in(const sensors_chip_name *name,
 	if (!(label = sensors_get_label(name, feature))) {
 		fprintf(stderr, "ERROR: Can't get label of feature %s!\n",
 			feature->name);
-		return;
+		return 1;
 	}
 	print_label(label, label_size);
 	free(label);
@@ -461,9 +471,10 @@ static void print_chip_in(const sensors_chip_name *name,
 		     "%s = %+6.2f V");
 
 	printf("\n");
+	return 0;
 }
 
-static void print_chip_fan(const sensors_chip_name *name,
+static int print_chip_fan(const sensors_chip_name *name,
 			   const sensors_feature *feature,
 			   int label_size)
 {
@@ -474,7 +485,7 @@ static void print_chip_fan(const sensors_chip_name *name,
 	if (!(label = sensors_get_label(name, feature))) {
 		fprintf(stderr, "ERROR: Can't get label of feature %s!\n",
 			feature->name);
-		return;
+		return 1;
 	}
 	print_label(label, label_size);
 	free(label);
@@ -526,6 +537,7 @@ static void print_chip_fan(const sensors_chip_name *name,
 		printf("  ALARM");
 
 	printf("\n");
+	return 0;
 }
 
 struct scale_table {
@@ -601,7 +613,7 @@ static const struct sensor_subfeature_list power_avg_sensors[] = {
 				 + ARRAY_SIZE(power_inst_sensors) \
 				 - NUM_POWER_ALARMS - 2)
 
-static void print_chip_power(const sensors_chip_name *name,
+static int print_chip_power(const sensors_chip_name *name,
 			     const sensors_feature *feature,
 			     int label_size)
 {
@@ -617,7 +629,7 @@ static void print_chip_power(const sensors_chip_name *name,
 	if (!(label = sensors_get_label(name, feature))) {
 		fprintf(stderr, "ERROR: Can't get label of feature %s!\n",
 			feature->name);
-		return;
+		return 1;
 	}
 	print_label(label, label_size);
 	free(label);
@@ -670,9 +682,10 @@ static void print_chip_power(const sensors_chip_name *name,
 		     label_size, "%s = %6.2f %s");
 
 	printf("\n");
+	return 0;
 }
 
-static void print_chip_energy(const sensors_chip_name *name,
+static int print_chip_energy(const sensors_chip_name *name,
 			      const sensors_feature *feature,
 			      int label_size)
 {
@@ -684,7 +697,7 @@ static void print_chip_energy(const sensors_chip_name *name,
 	if (!(label = sensors_get_label(name, feature))) {
 		fprintf(stderr, "ERROR: Can't get label of feature %s!\n",
 			feature->name);
-		return;
+		return 1;
 	}
 	print_label(label, label_size);
 	free(label);
@@ -698,6 +711,7 @@ static void print_chip_energy(const sensors_chip_name *name,
 		printf("     N/A");
 
 	printf("\n");
+	return 0;
 }
 
 static void print_chip_vid(const sensors_chip_name *name,
@@ -782,7 +796,7 @@ static const struct sensor_subfeature_list current_sensors[] = {
 #define NUM_CURR_ALARMS		5
 #define NUM_CURR_SENSORS	(ARRAY_SIZE(current_sensors) - NUM_CURR_ALARMS - 1)
 
-static void print_chip_curr(const sensors_chip_name *name,
+static int print_chip_curr(const sensors_chip_name *name,
 			    const sensors_feature *feature,
 			    int label_size)
 {
@@ -796,7 +810,7 @@ static void print_chip_curr(const sensors_chip_name *name,
 	if (!(label = sensors_get_label(name, feature))) {
 		fprintf(stderr, "ERROR: Can't get label of feature %s!\n",
 			feature->name);
-		return;
+		return 1;
 	}
 	print_label(label, label_size);
 	free(label);
@@ -816,6 +830,7 @@ static void print_chip_curr(const sensors_chip_name *name,
 		     "%s = %+6.2f A");
 
 	printf("\n");
+	return 0;
 }
 
 static void print_chip_intrusion(const sensors_chip_name *name,
@@ -839,8 +854,9 @@ static void print_chip_intrusion(const sensors_chip_name *name,
 	free(label);
 }
 
-void print_chip(const sensors_chip_name *name)
+int print_chip(const sensors_chip_name *name)
 {
+	int ret = 0;
 	const sensors_feature *feature;
 	int i, label_size;
 
@@ -850,13 +866,16 @@ void print_chip(const sensors_chip_name *name)
 	while ((feature = sensors_get_features(name, &i))) {
 		switch (feature->type) {
 		case SENSORS_FEATURE_TEMP:
-			print_chip_temp(name, feature, label_size);
+			if (print_chip_temp(name, feature, label_size))
+				ret = 1;
 			break;
 		case SENSORS_FEATURE_IN:
-			print_chip_in(name, feature, label_size);
+			if (print_chip_in(name, feature, label_size))
+				ret = 1;
 			break;
 		case SENSORS_FEATURE_FAN:
-			print_chip_fan(name, feature, label_size);
+			if (print_chip_fan(name, feature, label_size))
+				ret = 1;
 			break;
 		case SENSORS_FEATURE_VID:
 			print_chip_vid(name, feature, label_size);
@@ -865,13 +884,16 @@ void print_chip(const sensors_chip_name *name)
 			print_chip_beep_enable(name, feature, label_size);
 			break;
 		case SENSORS_FEATURE_POWER:
-			print_chip_power(name, feature, label_size);
+			if (print_chip_power(name, feature, label_size))
+				ret = 1;
 			break;
 		case SENSORS_FEATURE_ENERGY:
-			print_chip_energy(name, feature, label_size);
+			if (print_chip_energy(name, feature, label_size))
+				ret = 1;
 			break;
 		case SENSORS_FEATURE_CURR:
-			print_chip_curr(name, feature, label_size);
+			if (print_chip_curr(name, feature, label_size))
+				ret = 1;
 			break;
 		case SENSORS_FEATURE_INTRUSION:
 			print_chip_intrusion(name, feature, label_size);
@@ -883,4 +905,5 @@ void print_chip(const sensors_chip_name *name)
 			continue;
 		}
 	}
+	return ret;
 }
